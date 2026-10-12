@@ -3,7 +3,7 @@
 Ce dossier contient tout pour mettre en ligne une version testable, où le Veilleur, le Passeur et les caricatures utilisent une vraie IA.
 
 - `public/index.html` : la page Veillée
-- `netlify/functions/ai.js` : le petit serveur qui parle à l'IA (ta clé secrète reste ici, jamais dans la page)
+- `netlify/functions/ai.mjs` : le petit serveur qui parle à l'IA (ta clé secrète reste ici, jamais dans la page)
 - `netlify.toml` : la configuration
 
 ## Mise en ligne (environ 25 minutes, sans coder)

@@ -9,11 +9,10 @@ const MAX_TOKENS = { guard: 700, draw: 1600 };
 const hits = new Map(); // limite simple par adresse IP (par instance du serveur)
 
 function reply(status, body) {
-  return {
-    statusCode: status,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
-    body: JSON.stringify(body),
-  };
+  return Response.json(body, {
+    status,
+    headers: { "cache-control": "no-store" },
+  });
 }
 
 function extractJson(text) {
@@ -28,17 +27,17 @@ function extractJson(text) {
   }
 }
 
-exports.handler = async (event) => {
-  if (event.httpMethod !== "POST") return reply(405, { error: "method" });
+export default async (req, context) => {
+  if (req.method !== "POST") return reply(405, { error: "method" });
 
   // 1. Code d'invitation
   const expected = (process.env.ACCESS_CODE || "").trim();
-  const code = String(event.headers["x-access-code"] || "").trim();
+  const code = String(req.headers.get("x-access-code") || "").trim();
   if (!expected || code !== expected) return reply(401, { error: "bad_code" });
 
   // 2. Limite : 40 demandes par minute par personne
   const ip = String(
-    event.headers["x-nf-client-connection-ip"] || event.headers["x-forwarded-for"] || "ip"
+    context.ip || req.headers.get("x-nf-client-connection-ip") || req.headers.get("x-forwarded-for") || "ip"
   ).split(",")[0].trim();
   const now = Date.now();
   const recent = (hits.get(ip) || []).filter((t) => now - t < 60000);
@@ -49,7 +48,7 @@ exports.handler = async (event) => {
   // 3. Lecture de la demande
   let body;
   try {
-    body = JSON.parse(event.body || "{}");
+    body = JSON.parse((await req.text()) || "{}");
   } catch (e) {
     return reply(400, { error: "json" });
   }
@@ -60,9 +59,10 @@ exports.handler = async (event) => {
   if (!prompt || prompt.length > 6000) return reply(400, { error: "prompt" });
   if (!process.env.ANTHROPIC_API_KEY) return reply(500, { error: "no_key" });
 
-  // 4. Appel à l'IA
+  // 4. Appel à l'IA (via Netlify AI Gateway si disponible)
+  const baseUrl = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
   try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
+    const r = await fetch(`${baseUrl}/v1/messages`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
