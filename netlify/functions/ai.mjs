@@ -31,7 +31,8 @@ export default async (req, context) => {
   if (req.method !== "POST") return reply(405, { error: "method" });
 
   // 1. Code d'invitation
-  const expected = (process.env.ACCESS_CODE || "").trim();
+  // Code par défaut « test » si ACCESS_CODE n'est pas défini dans Netlify
+  const expected = (process.env.ACCESS_CODE || "test").trim();
   const code = String(req.headers.get("x-access-code") || "").trim();
   if (!expected || code !== expected) return reply(401, { error: "bad_code" });
 
